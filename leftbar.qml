@@ -1,17 +1,13 @@
 import QtQuick 2.7
 import QtQuick.Controls 2.1
 
-Rectangle {
-    id: root
-    color: '#f5f5f7'
-    //    // 右分割线
-    //    Line {
-    //        anchors.right: parent.right
-    //        width: 2
-    //        height: parent.height
-    //    }
+ApplicationWindow {
+    visible: true
+    width: 640
+    height: 480
+    title: qsTr("Hello World")
 
-    signal currentPage(string page)
+
     function startParse(url) {
         //url = 'file:///' + pathGetter.getCurrentPath() + '/' + url
         var http = new XMLHttpRequest()
@@ -33,17 +29,6 @@ Rectangle {
         http.open('GET', url, true)
         http.send()
     }
-
-
-    function updateCurrentIndex(index) {
-        if (index !== -1 && index < listview.count)
-            listview.currentIndex = index
-    }
-
-    ListModel {
-        id: listmodel
-    }
-
     Component {
         id: itemdelegate
         Item {
@@ -149,27 +134,142 @@ Rectangle {
             }
         }
     }
+    Component {
+    	id: component
+    	Item {
+            id: wrapper
+            width: listview.width
+            height: rootItem.height + column.height
+
+            Rectangle {
+                id: rootItem
+                width: parent.width
+                height: 30
+                color: 'red'
+                Text { text: section }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        wrapper.state = (wrapper.state == "" ? "collapse" : "")
+                    }
+                    hoverEnabled: true
+                    onEntered: rootItem.color = Qt.lighter('red', 1.2)
+                    onPressed: rootItem.color = Qt.darker('red', 1.2)
+                    onExited: rootItem.color = 'red'
+                }
+            }
+
+            Column {
+                id: column
+                anchors.top: rootItem.bottom
+                width: parent.width
+                height: repeater.height
+                Repeater {
+                    id: repeater
+                    width: parent.width
+                    height: 20 * count
+                    model: lists
+
+                    delegate: Rectangle {
+                        id: itemRect
+                        width: listview.width
+                        height: 20
+                        color: 'blue'
+                        Text { text: name; anchors.centerIn: parent }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                wrapper.state = (wrapper.state == "" ? "collapse" : "")
+                            }
+                            hoverEnabled: true
+                            onEntered: itemRect.color = Qt.lighter('blue', 1.2)
+                            onPressed: itemRect.color = Qt.darker('blue', 1.2)
+                            onExited: itemRect.color = 'blue'
+                        }
+                    }
+                }
+            }
+
+            state: ""
+
+            states: [
+                State {
+                    name: "collapse"
+                    PropertyChanges {
+                        target: column
+                        height: 0
+                        visible: false
+                    }
+                },
+
+                State {
+                    name: ""
+                    PropertyChanges {
+                        target: column
+                        height: repeater.height
+                        visible: true
+                    }
+                }
+
+            ]
+        }
+    }
 
     ListView {
         id: listview
-        width: parent.width
-        height: parent.height - musicInfo.height
-        boundsBehavior: ListView.StopAtBounds
 
-        signal clickSection(string section)
+        anchors.fill: parent
         model: listmodel
-        spacing: 10
-        clip: true
 
-        //        section.property: 'section'
-        //        section.delegate: sectionDelegate
-        //        delegate: listviewDelegate
-
-        delegate: itemdelegate
-        ScrollBar.vertical: ScrollBar { width: 10; active: true}
-
+        delegate: component
+        // delegate: itemdelegate
     }
 
-    
-    Component.onCompleted: startParse('left.json')
+
+    ListModel {
+        id: listmodel
+    }
+
+    function readFile() {
+        var http = new XMLHttpRequest;
+        http.onreadystatechange = function() {
+            if (http.readyState == XMLHttpRequest.DONE) {
+                var jsonStr = http.responseText
+                var json = JSON.parse(jsonStr)
+                parseJson(json)
+            }
+        }
+
+        http.open("GET", "data.json")
+        http.send()
+    }
+
+    function parseJson(json) {
+        json = json.allStations
+        for (var i = 0;i < json.length; ++i) {
+            var stationName = json[i].stationName
+
+            var lists = json[i].stations
+            var stations = []
+            console.log(lists.length)
+
+            for (var j = 0; j < lists.length; ++j) {
+                console.log(lists[i])
+                stations.push({"name": lists[j].name })
+            }
+
+            listmodel.append({
+                              "stationName": stationName,
+                              "stations": stations
+                             })
+        }
+    }
+
+    Component.onCompleted: {
+        // readFile()
+        startParse('left.json')
+    }
+
 }
